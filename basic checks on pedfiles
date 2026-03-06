@@ -1,0 +1,265 @@
+#primeiro, entrar no R (se estiver no terminal, só escrever R e dar enter)
+setwd("/home/fernanda/pedigreejersey")
+
+#chamar os pacotes que vamos usar
+library(readxl)
+library(dplyr)
+library(writexl)
+library(stringr)
+
+#se quiser baixar novo pacote
+install.packages("nomedopacote")
+
+#na importação ver a questao de espaços, na e 0 para ver se o banco está sendo lido certo
+#colocar os bancos pra dentro do R
+pedsandra<-read_excel("pedbuscasandra.xlsx")
+head(pedsandra)
+str(pedsandra)
+
+pedversaofinal<-read_excel("PEDIGREEVERSAOFINAL.xlsx")
+head(pedversaofinal)
+str(pedversaofinal)
+
+pedalteradofr<-read_excel("pedalteradofr.xlsx")
+head(pedalteradofr)
+str(pedalteradofr)
+
+#retirar os espaços dos RGs
+pedversaofinal <- pedversaofinal %>%
+  mutate(
+    RG    = str_squish(RG),
+    RGPAI = str_squish(RGPAI),
+    RGMAE = str_squish(RGMAE)
+  ) %>%
+  mutate(
+    RG    = str_replace_all(RG, " ", ""),
+    RGPAI = str_replace_all(RGPAI, " ", ""),
+    RGMAE = str_replace_all(RGMAE, " ", "")
+  )
+  
+#retirar os hífens
+pedversaofinal <- pedversaofinal %>%
+  mutate(
+    RG = str_replace_all(RG, "-", ""),
+    RGPAI = str_replace_all(RGPAI, "-", ""),
+    RGMAE = str_replace_all(RGMAE, "-", "")
+  )
+  
+  pedsandra <- pedsandra %>%
+  mutate(
+    RG = str_replace_all(RG, "-", ""),
+    RGPAI = str_replace_all(RGPAI, "-", ""),
+    RGMAE = str_replace_all(RGMAE, "-", "")
+  )
+  
+pedsandra <- pedsandra %>%
+  mutate(
+    RG    = str_squish(RG),
+    RGPAI = str_squish(RGPAI),
+    RGMAE = str_squish(RGMAE)
+  ) %>%
+  mutate(
+    RG    = str_replace_all(RG, " ", ""),
+    RGPAI = str_replace_all(RGPAI, " ", ""),
+    RGMAE = str_replace_all(RGMAE, " ", "")
+  )  
+  
+#ver se tem duplicado
+any(duplicated(pedversaofinal$RG))
+any(duplicated(pedsandra$RG))
+
+#se tem duplicado quem sao
+pedversaofinal$RG[duplicated(pedversaofinal$RG)]
+pedsandra$RG[duplicated(pedsandra$RG)]
+
+#quem sao os duplicados - fazer salvando em um objeto 
+duplicates<-pedversaofinal[pedversaofinal$RG %in% pedversaofinal$RG[duplicated(pedversaofinal$RG)], ]
+
+#ver um animal especifico no meu banco
+pedalteradofr %>%
+  filter(RG == "48920S")
+
+#p ver na tela todos os animais
+print(duplicates, n=)
+
+#summary p ver o resumo
+summary(duplicates)
+
+#ver se os animais do pedsandra estao no pedversaofinal
+setdiff(pedsandra$RG, pedversaofinal$RG)
+#resposta - nao tem nenhum animal q esta em um mas n esta no outro
+character(0)
+#isso vendo somente rg, tem q ver as colunas rgpai e rgmae
+
+#vendo se todas as infos correspondem p os animais entre os 2 bancos
+comparacao <- pedsandra %>%
+	select(RG, RGPAI, RGMAE) %>%
+	left_join(pedversaofinal, 
+	by = "RG", 
+	suffix = c("_pedsandra", "_pedfinal")
+	)
+
+comparacao <- comparacao %>%
+mutate(
+	pai_igual = RGPAI_pedsandra == RGPAI_pedfinal,
+	mae_igual = RGMAE_pedsandra == RGMAE_pedfinal,
+	ambos_igual = pai_igual & mae_igual
+	)
+	
+table(comparacao$ambos_igual, useNA = "ifany")
+
+animais_problema <- comparacao %>%
+filter(is.na(ambos_igual) | ambos_igual == FALSE)
+
+#TRUE apenas se tanto pai quanto mae forem iguais nas duas bases
+
+#investigar os problema
+animais_problema <- comparacao %>%
+	filter(is.na(ambos_igual))
+	
+animais_problema
+
+#salvar em excel
+write_xlsx(animais_problema, path = "animais_problema.xlsx")
+
+#verificar se os pais constam como animal no banco
+
+##############TUDO CORRIGIDO NO ARQUIVO pedalteradofr.xlsx##############
+#começar a verificar problemas de pedigree
+pedalteradofr<-read_excel("pedalteradofr.xlsx")
+
+#animais q sao seus proprios pais
+pedalteradofr %>% filter(RG == RGPAI | RG == RGMAE)
+
+#animais q tem pai = mãe != significa diferente de
+pedalteradofr %>% filter(RGPAI == RGMAE & RGPAI != "0")
+
+#animais q tem pais q nao estao no arquivo de pedigree
+pedalteradofr %>% filter(!(RGMAE %in% pedalteradofr$RG) & RGMAE !="0")
+pedalteradofr %>% filter(!(RGPAI %in% pedalteradofr$RG) & RGPAI !="0")
+
+#animais que aparecem como pai e como mãe
+animaisduplosexo<-intersect(
+	setdiff(unique(pedalteradofr$RGPAI), "0"),
+	setdiff(unique(pedalteradofr$RGMAE), "0")
+	)
+#mstra na tela e salva como objeto os animais que são pai e tb mãe
+animaisduplosexo<-(
+pedalteradofr %>%
+  filter(RGPAI %in% animaisduplosexo |
+         RGMAE %in% animaisduplosexo)
+)
+#salvar pl
+write_xlsx(animaisduplosexo, path = "animaisduplosexo.xlsx")
+
+#procurando animais q o RG difere por 1 letra
+#remove 1 letra no final e armazenar como RG_base
+pedalteradofr <- pedalteradofr %>%
+  mutate(
+    RG_base = str_replace(RG, "[A-Za-z]$", "")
+  )
+  
+#identificar quais os animais c esse conflito
+conflitos <- pedalteradofr %>%
+  group_by(RG_base) %>%
+  filter(n() > 1) %>%
+  arrange(RG_base)
+  
+#ver os casos (olhando apenas rg e rg_base)
+conflitos %>%
+  select(RG, RG_base)
+# A tibble: 4,269 × 2
+# Groups:   RG_base [2,081]
+   RG         RG_base  
+   <chr>      <chr>    
+ 1 066068559W 066068559
+ 2 066068559N 066068559
+ 3 1N         1        
+ 4 1K         1        
+ 5 1J         1        
+ 6 1B         1        
+ 7 10009F     10009    
+ 8 10009D     10009    
+ 9 100287C    100287   
+10 100287P    100287   
+# ℹ 4,259 more rows
+# ℹ Use `print(n = ...)` to see more rows
+
+#criar banco com os problemas + pai e mae
+animaisrgparecidos <- conflitos %>%
+  select(RG, RG_base, RGPAI, RGMAE)
+
+write_xlsx(animaisrgparecidos, path = "animaisrgparecidos.xlsx")
+
+#criar banco com animais final D no RG
+animais_final_D <- animaisrgparecidos %>%
+  filter(grepl("D$", RG))
+  
+#animais com final D e que tenham infos de pai
+animais_final_D_com_pais <- animaisrgparecidos %>%
+  filter(
+    grepl("D$", RG) & 
+    (RGPAI != "0" | RGMAE != "0")
+  )
+  
+#criar a coluna de presença no fenotipo - SE ESTÃO OU NÃO NO OUTRO ARQUIVO DENOMINADO FENÓTIPO. AQUI TEM QUE CHAMAR O OUTRO BANCO P DENTRO DO R TAMBÉM
+animaisrgparecidos <- animaisrgparecidos %>%
+  mutate(
+    status_fenotipo = if_else(
+      RG %in% fenotipos$RGFENOTIPO,
+      "está no arquivo de fenótipo",
+      "não está no arquivo de fenótipo"
+    )
+  )
+
+#checar se os animais com RG parecidos tem pais iguais ou diferentes
+animaisrgparecidos <- animaisrgparecidos %>%
+  group_by(RG_base) %>%
+  mutate(
+    combo_pais = paste(RGPAI, RGMAE),
+    classificacao_pais = case_when(
+      
+      all(RGPAI == "0" & RGMAE == "0") ~ "todos 0/0",
+      
+      n_distinct(combo_pais) == 1 ~ "pais iguais",
+      
+      n_distinct(combo_pais) > 1 ~ "pais diferentes"
+    )
+  ) %>%
+  ungroup() %>%
+  select(-combo_pais)
+
+########################################################################
+#########encontrar loopings na genealogia###############################
+ibrary(igraph)
+
+edges <- rbind(
+  data.frame(parent = pedalteradofr$RGPAI, child = pedalteradofr$RG),
+  data.frame(parent = pedalteradofr$RGMAE, child = pedalteradofr$RG)
+)
+
+# remover pais desconhecidos
+edges <- edges[edges$parent != "0", ]
+
+# manter apenas pais que existem no pedigree
+edges <- edges[edges$parent %in% pedalteradofr$RG, ]
+
+g <- graph_from_data_frame(edges, directed = TRUE)
+> is_dag(g)
+[1] FALSE
+> comp <- components(g, mode = "strong")
+
+loop_nodes <- names(comp$membership[comp$csize[comp$membership] > 1])
+
+loop_nodes
+[1] "590317W" "135440N" "534585W" "488392N" "492041N" "506886N"
+> pedalteradofr[pedalteradofr$RG %in% loop_nodes, ]
+# A tibble: 6 × 6
+  RG      NOME                        RGPAI   NOMEPAI              RGMAE NOMEMAE
+  <chr>   <chr>                       <chr>   <chr>                <chr> <chr>  
+1 590317W NANCYS SLEEPING ADVANCER    534585W ADVANCER SLEEPING J… 1885… NANCY …
+2 534585W ADVANCER SLEEPING JESTER    488392N JESTER STANDARD ADV… 1424… PRINCE…
+3 506886N WILLOW CREEK B B LARK       137149N BELL CITY BOUQUET'S… 4920… WILLOW…
+4 492041N WILLOW CREEK HOTLINE JANICE 137725N FAIRVIEW LOVES HOTL… 5068… WILLOW…
+5 488392N JESTER STANDARD ADVANCER    135440N JFD TITLE            4540… PLEASA…
+6 135440N JFD TITLE                   590317W NANCYS SLEEPING ADV… 2536… MILEST…
