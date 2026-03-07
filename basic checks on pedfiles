@@ -1,5 +1,5 @@
 #primeiro, entrar no R (se estiver no terminal, só escrever R e dar enter)
-setwd("/home/fernanda/pedigreejersey")
+setwd("/home/fernanda")
 
 #chamar os pacotes que vamos usar
 library(readxl)
@@ -12,20 +12,23 @@ install.packages("nomedopacote")
 
 #na importação ver a questao de espaços, na e 0 para ver se o banco está sendo lido certo
 #colocar os bancos pra dentro do R
-pedsandra<-read_excel("pedbuscasandra.xlsx")
-head(pedsandra)
-str(pedsandra)
+ped1<-read_excel("ped1.xlsx")
+head(ped1)
+str(ped1)
 
-pedversaofinal<-read_excel("PEDIGREEVERSAOFINAL.xlsx")
-head(pedversaofinal)
-str(pedversaofinal)
+pedtotal<-read_excel("PEDIGREETOTAL.xlsx")
+head(pedtotal)
+str(pedtotal)
 
+#esse é meu banco q ja tinha alterado alguns animais claramente errados
 pedalteradofr<-read_excel("pedalteradofr.xlsx")
 head(pedalteradofr)
 str(pedalteradofr)
 
+#para conferencia de pedigree, é de suma importancia unificar a maneira q os RG/ID estão sendo lidos. 
+#precisa tirar espaços ou quaisquer caracteres q possam confundir o programa a achar q sao animais diferentes
 #retirar os espaços dos RGs
-pedversaofinal <- pedversaofinal %>%
+pedtotal <- pedtotal %>%
   mutate(
     RG    = str_squish(RG),
     RGPAI = str_squish(RGPAI),
@@ -38,21 +41,21 @@ pedversaofinal <- pedversaofinal %>%
   )
   
 #retirar os hífens
-pedversaofinal <- pedversaofinal %>%
+pedtotal <- pedtotal %>%
   mutate(
     RG = str_replace_all(RG, "-", ""),
     RGPAI = str_replace_all(RGPAI, "-", ""),
     RGMAE = str_replace_all(RGMAE, "-", "")
   )
   
-  pedsandra <- pedsandra %>%
+  ped1 <- ped1 %>%
   mutate(
     RG = str_replace_all(RG, "-", ""),
     RGPAI = str_replace_all(RGPAI, "-", ""),
     RGMAE = str_replace_all(RGMAE, "-", "")
   )
   
-pedsandra <- pedsandra %>%
+ped1 <- ped1 %>%
   mutate(
     RG    = str_squish(RG),
     RGPAI = str_squish(RGPAI),
@@ -63,17 +66,19 @@ pedsandra <- pedsandra %>%
     RGPAI = str_replace_all(RGPAI, " ", ""),
     RGMAE = str_replace_all(RGMAE, " ", "")
   )  
-  
-#ver se tem duplicado
-any(duplicated(pedversaofinal$RG))
-any(duplicated(pedsandra$RG))
+#########################################################################################################################
+#AQUI COMEÇAM AS CONFERÊNCIAS
+
+#ver se tem animal duplicado
+any(duplicated(pedtotal$RG))
+any(duplicated(ped1$RG))
 
 #se tem duplicado quem sao
-pedversaofinal$RG[duplicated(pedversaofinal$RG)]
-pedsandra$RG[duplicated(pedsandra$RG)]
+pedtotal$RG[duplicated(pedtotal$RG)]
+ped1$RG[duplicated(ped1$RG)]
 
 #quem sao os duplicados - fazer salvando em um objeto 
-duplicates<-pedversaofinal[pedversaofinal$RG %in% pedversaofinal$RG[duplicated(pedversaofinal$RG)], ]
+duplicates<-pedtotal[pedtotal$RG %in% pedtotal$RG[duplicated(pedtotal$RG)], ]
 
 #ver um animal especifico no meu banco
 pedalteradofr %>%
@@ -86,23 +91,23 @@ print(duplicates, n=)
 summary(duplicates)
 
 #ver se os animais do pedsandra estao no pedversaofinal
-setdiff(pedsandra$RG, pedversaofinal$RG)
+setdiff(ped1$RG, pedtotal$RG)
 #resposta - nao tem nenhum animal q esta em um mas n esta no outro
 character(0)
 #isso vendo somente rg, tem q ver as colunas rgpai e rgmae
 
 #vendo se todas as infos correspondem p os animais entre os 2 bancos
-comparacao <- pedsandra %>%
+comparacao <- ped1 %>%
 	select(RG, RGPAI, RGMAE) %>%
-	left_join(pedversaofinal, 
+	left_join(pedtotal, 
 	by = "RG", 
-	suffix = c("_pedsandra", "_pedfinal")
+	suffix = c("_ped1", "_pedtotal")
 	)
 
 comparacao <- comparacao %>%
 mutate(
-	pai_igual = RGPAI_pedsandra == RGPAI_pedfinal,
-	mae_igual = RGMAE_pedsandra == RGMAE_pedfinal,
+	pai_igual = RGPAI_ped1 == RGPAI_pedtotal,
+	mae_igual = RGMAE_ped1 == RGMAE_pedtotal,
 	ambos_igual = pai_igual & mae_igual
 	)
 	
@@ -131,7 +136,8 @@ pedalteradofr<-read_excel("pedalteradofr.xlsx")
 #animais q sao seus proprios pais
 pedalteradofr %>% filter(RG == RGPAI | RG == RGMAE)
 
-#animais q tem pai = mãe != significa diferente de
+#animais q tem pai = mãe 
+#!= significa diferente de
 pedalteradofr %>% filter(RGPAI == RGMAE & RGPAI != "0")
 
 #animais q tem pais q nao estao no arquivo de pedigree
@@ -172,16 +178,16 @@ conflitos %>%
 # Groups:   RG_base [2,081]
    RG         RG_base  
    <chr>      <chr>    
- 1 066068559W 066068559
- 2 066068559N 066068559
+ 1 06606W 06606
+ 2 06606N 06606
  3 1N         1        
  4 1K         1        
  5 1J         1        
  6 1B         1        
- 7 10009F     10009    
- 8 10009D     10009    
- 9 100287C    100287   
-10 100287P    100287   
+ 7 1009F     1009    
+ 8 1009D     1009    
+ 9 1287C    1287   
+10 1287P    1287   
 # ℹ 4,259 more rows
 # ℹ Use `print(n = ...)` to see more rows
 
@@ -251,15 +257,3 @@ g <- graph_from_data_frame(edges, directed = TRUE)
 
 loop_nodes <- names(comp$membership[comp$csize[comp$membership] > 1])
 
-loop_nodes
-[1] "590317W" "135440N" "534585W" "488392N" "492041N" "506886N"
-> pedalteradofr[pedalteradofr$RG %in% loop_nodes, ]
-# A tibble: 6 × 6
-  RG      NOME                        RGPAI   NOMEPAI              RGMAE NOMEMAE
-  <chr>   <chr>                       <chr>   <chr>                <chr> <chr>  
-1 590317W NANCYS SLEEPING ADVANCER    534585W ADVANCER SLEEPING J… 1885… NANCY …
-2 534585W ADVANCER SLEEPING JESTER    488392N JESTER STANDARD ADV… 1424… PRINCE…
-3 506886N WILLOW CREEK B B LARK       137149N BELL CITY BOUQUET'S… 4920… WILLOW…
-4 492041N WILLOW CREEK HOTLINE JANICE 137725N FAIRVIEW LOVES HOTL… 5068… WILLOW…
-5 488392N JESTER STANDARD ADVANCER    135440N JFD TITLE            4540… PLEASA…
-6 135440N JFD TITLE                   590317W NANCYS SLEEPING ADV… 2536… MILEST…
