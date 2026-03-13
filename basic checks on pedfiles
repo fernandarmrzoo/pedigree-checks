@@ -257,3 +257,28 @@ g <- graph_from_data_frame(edges, directed = TRUE)
 
 loop_nodes <- names(comp$membership[comp$csize[comp$membership] > 1])
 
+######################################################################
+#####criar a coluna sexo em banco q nao existe########################
+library(dplyr)
+
+# cria vetor dos animais que aparecem como mãe no ped
+maes <- unique(ped$RGMAE[ped$RGMAE != "0"])
+
+# cria vetor animais que aparecem como pai no ped
+pais <- unique(ped$RGPAI[ped$RGPAI != "0"])
+
+# aqui faz a consulta em outro banco pelos animais que aparecem nele
+#nesse caso especifico, eu tinha banco q se os animais estivessem nele, eram femeas
+femeas_fenotipo <- unique(fenotipos$RG)
+
+pedalteradofr <- pedalteradofr %>%
+  mutate(
+    sexo = case_when(
+      RG %in% maes ~ 2,
+      RG %in% pais ~ 1,
+      RG %in% femeas_fenotipo ~ 2,
+      TRUE ~ 0 #colocaria 0 nos animais q nao foi possivel encontrar sexo, conferencia manual
+    )
+  )
+write_xlsx(pedalteradofr, path = "pedigreecomsexo.xlsx")
+
