@@ -244,10 +244,10 @@ edges <- rbind(
   data.frame(parent = pedalteradofr$RGMAE, child = pedalteradofr$RG)
 )
 
-# remover pais desconhecidos
+#remover pais desconhecidos
 edges <- edges[edges$parent != "0", ]
 
-# manter apenas pais que existem no pedigree
+#manter apenas pais que existem no pedigree
 edges <- edges[edges$parent %in% pedalteradofr$RG, ]
 
 g <- graph_from_data_frame(edges, directed = TRUE)
@@ -282,3 +282,18 @@ pedalteradofr <- pedalteradofr %>%
   )
 write_xlsx(pedalteradofr, path = "pedigreecomsexo.xlsx")
 
+#######################################################################################
+#############usando a coluna sexo confirmar se tem pai femea ou mae macho##############
+library(dplyr)
+
+#procura no banco animais com sexo 2 q estejam na coluna RGPAI
+femeas_como_pai <- pedigreecomsexo %>%
+  filter(sexo == 2 & RG %in% RGPAI)
+
+#mostra o banco
+femeas_como_pai
+
+machos_como_mae <- pedigreecomsexo %>%
+  filter(sexo == 1 & RG %in% RGMAE)
+
+machos_como_mae
