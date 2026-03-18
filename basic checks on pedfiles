@@ -39,7 +39,6 @@ pedtotal <- pedtotal %>%
     RGPAI = str_replace_all(RGPAI, " ", ""),
     RGMAE = str_replace_all(RGMAE, " ", "")
   )
-  
 #retirar os hífens
 pedtotal <- pedtotal %>%
   mutate(
@@ -47,25 +46,21 @@ pedtotal <- pedtotal %>%
     RGPAI = str_replace_all(RGPAI, "-", ""),
     RGMAE = str_replace_all(RGMAE, "-", "")
   )
-  
-  ped1 <- ped1 %>%
+
+#ou
+fenotipos <- fenotipos %>%
   mutate(
-    RG = str_replace_all(RG, "-", ""),
-    RGPAI = str_replace_all(RGPAI, "-", ""),
-    RGMAE = str_replace_all(RGMAE, "-", "")
+    RG = str_replace_all(RG, "[ /#]", "")
   )
-  
-ped1 <- ped1 %>%
+ #entre [ ] vai todos os caracteres que quer retirar
+
+#para remover tudo que não é letra/múmero
+fenotipos <- fenotipos %>%
   mutate(
-    RG    = str_squish(RG),
-    RGPAI = str_squish(RGPAI),
-    RGMAE = str_squish(RGMAE)
-  ) %>%
-  mutate(
-    RG    = str_replace_all(RG, " ", ""),
-    RGPAI = str_replace_all(RGPAI, " ", ""),
-    RGMAE = str_replace_all(RGMAE, " ", "")
-  )  
+    RG = str_replace_all(RG, "[^[:alnum:]]", "")
+  )
+
+
 #########################################################################################################################
 #AQUI COMEÇAM AS CONFERÊNCIAS
 
